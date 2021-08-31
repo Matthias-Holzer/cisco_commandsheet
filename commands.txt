@@ -1,0 +1,856 @@
+####################################################################
+--------------------------------Basic-------------------------------
+####################################################################
+
+#######workflow
+!en	
+terminla history size <SIZE>		(inrease history size)
+
+!conf t
+no ip domain lookup	(doesnt lookup every dns when you have a typo)
+line console 0
+	exec-timeout 0	(setzt die Timeout zeit auf 0)
+
+
+#######saving
+write	(saves the current config)
+copy running-config startup-config (saves the current config)
+
+#######passwords
+line console 0
+	password	<PASSWORD>
+	login
+	logging syn
+
+enable secret <PASSWORD>
+
+line vty 0 4 (telnet)
+	password [password]
+
+#######default route
+ip route 0.0.0.0 0.0.0.0 <IP_ADDRESS_DEFAULT_ROUTE / interface>
+
+
+###################################################################
+--------------------------Reseting Settings------------------------
+###################################################################
+
+erase startup
+delete vlan.dat
+reload
+
+
+
+##################################################################
+------------------------------V-LAN-------------------------------
+###################################################################
+
+!switch
+vlan <VLAN_NUMMBER>
+
+int range <START_INTERFACE> - <END_INTERFACE>
+switchport mode access
+switchport access vlan <VLAN_NUMMBER>
+
+!router
+int <INT_SWITCH>.<VLAN>
+encapsulation dot1Q <VLAN>
+ip add <IP_ADDRESS> <MASK>
+
+#################################################################
+-----------------------Multi Layer Switch------------------------
+#################################################################
+
+!config terminal
+ip routing
+
+!interface
+no switchport
+
+!interface connectet to vlans
+switchport mode trunk
+switchport turnk encapsulation dot1Q
+
+!conf t
+int vlan <VLAN>
+	ip add <IP> <MASK>
+
+
+##################################################################
+---------------------------SSH-conection--------------------------
+##################################################################
+
+line vty 0 15
+	password <password>
+	login
+
+
+enable secret <password>
+
+ip domain name <NAME>
+
+crypto key generate rsa
+
+username <USERNAME> password <PASSWORD>
+
+line vty 0 15
+	transport input ssh
+	login local
+	
+
+!Verbinden
+ssh -l <USERNAME> <IP>
+
+	
+ip default-gateway
+
+####################################################################
+---------------------------Port Security----------------------------
+####################################################################
+
+int <interface>
+switchport mode access
+switchport port-security mac-address <sticky / macaddress>
+switchport port-security maximum <anz>
+switchport port-security violation <violation>		(protect drops without log | restrict drops it and logs it) 
+
+show port-security
+
+
+
+####################################################################
+----------------------------Static Routes---------------------------
+####################################################################
+
+ip route <NEUES_NETZWERK> <MASKE_NEUES_NETZWERK> <NEXT_HOP>
+
+ip route 192.168.3.0 255.255.255.255.0 192.168.2.1
+
+
+!!!Wichtig beide Netzwerke müssen sich kennen, damit die Pakete wieder zurückkommen
+
+###################################################################
+-------------------------------OSPF--------------------------------
+###################################################################
+
+router ospf 10
+
+router-id <OSPF_ID>
+router 1.1.1.1
+	network <ANLIEGENDES_NETZWERK> <WILDCARDMASK> area <AREA>
+	network 192.168.10.0 0.0.0.0 area 2
+
+	interface <INT>
+
+
+show ip ospf neighbor
+
+!in ospf 	(default route weitergeben)
+default-information originate
+
+!im Interface
+ip ospf cost <COST>	
+do sh ip ospf int <INTERFACE> 
+
+do clear ip ospf process
+
+ip ospf network point-to-poin
+
+
+###################################################################
+-------------------------------EIGRP-------------------------------
+###################################################################
+
+
+
+
+
+
+
+
+###################################################################
+------------------------------DHCP--------------------------------
+###################################################################
+https://www.youtube.com/watch?v=GCaR8e-16bs
+
+###Mit Routern
+
+ip dhcp pool <NAME>
+
+default-router <IP_DEFAULT_GATEWAY>
+
+network <NETZWERK> <SUBNETMASK>
+
+ip dhcp excluded-address <IP-ADDRESS>
+
+!andere Router
+!im Interface
+ip helper-address <IP_ADDRESS_DHCP_SERVER>
+
+
+###Mit Server
+
+-Server Einrichten
+	DHCP Addresspool
+	static Adddress für den DHCP Server
+
+-Router
+
+!!!IM_INTERFACE!!!
+ip helper-address <IP_ADDRESS_DHCP_SERVER>
+
+
+
+###################################################################
+---------------------------NTP + SYSLOG----------------------------
+###################################################################
+
+###Syslog
+turn it on on the server
+
+logging <IP_ADDRESS_SYSLOG-SERVER>
+service timestamps log datetime msec 
+
+###NTP
+
+ntp server <IP_ADDRESS_NTP-SERVER>
+
+
+
+
+###################################################################
+-------------------------------ACL---------------------------------
+###################################################################
+
+###Standard (1-99)
+clostest to the destination
+beim Ziel
+
+controlls only source IP Addresses
+
+access.list <NUMBER> permit <IP_ADDRESS-/-ANY>
+access list <NUMBER> deny <IP_ADDRESS-/-ANY>
+
+int <INTERFACE> 
+ip access-group <NUMBER_ACL> <IN-/-OUT>
+
+###Extended (100-199)
+closest to the source
+beim Ursprung
+
+controlls source IP Addresses, destination IP Addresses and ports
+
+<deny/permit> <protocoll> <sourceIP> (<sourceWILDCARD>) <destinationIP> (<destinationWILDCARD>) 
+
+DHCP 
+access-list 166 permit udp host 192.168.1.2 any eq 67 
+access-list 166 permit udp any host 192.168.1.2 eq 68
+
+
+###Named
+
+ip access-list
+
+
+###################################################################
+--------------------------------Ports------------------------------
+###################################################################
+
+###TCP
+23 Telnet
+80 http
+
+443 https
+
+###UDP
+67 DHCP client 
+
+68 DHCP server
+
+514 Syslog
+
+
+
+
+
+
+####################################################################
+-------------------------------NAT----------------------------------
+####################################################################
+
+https://www.youtube.com/watch?v=dUfKR2wC1Y4
+https://www.youtube.com/watch?v=yBgWpU1-lX0
+
+nat übersetzt locale ipv4 addressen auf public ipv4 addressen
+
+-inside/outside
+
+inside ist der LAN bereich, wo local ip addressen vergeben werden
+
+outside ist der WAN berecih in dem public ip addressen vergben werden 
+
+config:
+
+int g0/0
+ip nat inside/outside
+
+---1. Static Translation 1-to-1
+
+ip nat inside source static 192.168.0.10 209.165.100.4
+
+---2. Port Address Translation 1-to-1 Port 80
+
+ip nat inside source static tcp 10.0.0.200 80 209.165.100.2
+
+---3. NAT Overload Translation (PAT)
+eine ACL erstellen und 
+
+ip nat inside source list 6 int g0/0 overload
+
+!overload benützt port nummer
+
+---4. Dynamic Translation (NAT Pool)
+
+einen ACL erstellen
+
+ip nat pool <NAME> <ANFANGS_IP_ADDRESSE> <END_IP_ADDRESSE> netmask <SUBNETMASK>
+ip nat pool MYPOOL 209.165.100.25 209.165.100.28 netmask 255.255.255.240
+
+ip nat inside source list <NAME_ACL> pool <NAME_POOL> <OPTIONAL_overload>
+ip nat inside source list 6 pool MYPOOL overload
+
+
+####################################################################
+-----------------------------VOIP-----------------------------------
+####################################################################
+
+!switch
+int range fa0/1 - fa0/24
+switchport voice vlan <VLAN>
+
+!router (!!!wichtig!!! nur Model 2811) 
+ip dhcp pool <POOL_NAME>
+	network <NETWORK> <SUBNETMASK>
+	default router <DEFAULT-GATEWAY>
+	option 150 ip <DEFAULT-GATEWAY>
+
+telephony-service
+	no auto-reg-ephone
+	max-ephones <MAX_EPHONE_NUMBER>
+	max-dn <MAX_DN_NUMBER>
+	ip source-address <DEFAULT-GATEWAY> port 2000
+
+ephone-dn <DN_NUMBER>
+	number <CALL_NUMBER>
+
+ephone <DN_NUMBER>
+	mac-address <MAC-ADDRESS_EPHONE>
+	type <TYPE> (ata)
+	button <RELATION bsp 1:1>
+
+
+dial-peer voice 1 voip
+	destination pattern <PATTERN_OF_NUMBERS bsp 1..>
+	session target ipv4:<IP_ROUTER_NEW_NETWORK>
+
+
+####################################################################
+------------------------------RADIUS--------------------------------
+####################################################################
+
+###Server services aaa 
+
+!secret
+<RADIUS_SERVER_PASSWORD>
+
+
+###Router
++
+aaa new-model
+
+radius-server host <IP-ADDRESS_RADIUS-SERVER> key <RADIUS_SERVER_PASSWORD> 
+
+aaa authentication login default group radius local
+
+line vty 0 15
+login authentication default
+
+
+5am83
+
+####################################################################
+-------------------------------HSRP---------------------------------
+####################################################################
+
+
+
+!in the interface
+standby version 2
+standby <NUMBER> ip <IP_VIRTUAL_ROUTER>
+
+standby <NUMBER> priority <PRIORITY>
+
+standby <group-number> preempt	//new ellection off active router
+
+standby <group-number> track <INT_TO_INTERNET>
+
+
+####################################################################
+--------------------------------VPN---------------------------------
+####################################################################
+
+#show
+show version
+
+#activate 
+license boot module c1900 technology-package securityk9 (on router_1941)
+license boot module c2900 technology-package securityk9 (on router_2911)
+
+reload 
+
+#access list
+access-list <nummer_abouth_100> permit ip <source_ip> <wildcard> <destination_ip> <wildcard> 
+
+######IKE Phase 1 (on R1) 
+
+#configure crypto isamkmp
+crypto isakmp policy <nummer>
+	
+	encryption aes 256
+	
+	authentication pre-share
+
+	group <highest>
+
+	exit
+
+crypto isakmp key <password> address <peer-address>
+
+
+######IKE Phase 2 (on R1)
+
+
+#Create the transform-set
+
+crypto IPSec transform-set VPN-SET-<NAME> esp-aes esp-sha-hmac 
+
+#create crypto MAP
+crypto map VPN-MAP-<NAME> <nummer> IPSec-isakmp
+
+	description <description>
+
+	set peer <destination>
+
+	set transform-set VPN-SET-<NAME>
+
+	match address <addresse> (access-list)
+
+#binding the MAP to the outgoing Interface 
+
+interface <interface>
+
+	crypto map VPN-MAP-<NAME>
+
+#same shit on the other side
+
+
+
+####################################################################
+--------------------------------PPP---------------------------------
+####################################################################
+
+######R1
+
+username <R2> password <password>
+
+int <int>
+
+	encapsulation ppp
+
+	ppp authentication <pap / chap>
+
+	!if pap
+	ppp pap sent-username <R1> password <password>
+
+
+
+######R2
+
+username <R1> password <password>
+
+int <int>
+
+	encapsulation ppp
+
+	ppp authentication <pap / chap>
+
+	!if pap
+	ppp pap sent-username <R2> password <password>
+
+
+####################################################################
+--------------------------------BGP---------------------------------
+####################################################################
+(boarder gateway protocol)
+
+######On the local router 
+
+router bgp 65000
+
+	neighbor <IPS address> remote-as 65001
+
+	network <addvertisment_IP> maks <subnetmaks>
+
+	
+	
+######On the ISP
+
+router bgp 65001
+
+	neighbor <Router address> remote-as 65000
+
+	network 0.0.0.0 maks <subnetmaks>
+	    (all networks)
+	
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+#####################################################Theroretischer Teil#####################################################
+-----------------------------------------------------------------------------------------------------------------------------
+
+DCHP
+
+D	Discovery
+O	Offer
+R	Request
+A	ACK
+
+Client port 68
+Server port 67
+
+
+
+OSPF
+
+
+3 Tabellen 
+    Neighbor table – stores information about OSPF neighbors.
+    Topology table – stores the topology structure of a network.
+    Routing table – stores the best routes.
+
+dijkstra algorithmus
+	shortes parth first (bandwith)
+
+LSA
+LSU
+LSR
+LSDB
+LSac
+
+sequenzdiagramm
+
+multiacces Netzwerk
+	mehrere Router auf ein Netzwerk
+
+
+metric = cost
+
+
+dead timer (40 Sekunden)
+
+
+
+##########################Subnets##############################
+
+	Addresses	Netmask	Amount of a Class C
+/31	2	255.255.255.254	1/128
+/30	4	255.255.255.252	1/64
+/29	8	255.255.255.248	1/32
+/28	16	255.255.255.240	1/16
+/27	32	255.255.255.224	1/8
+/26	64	255.255.255.192	1/4
+/25	128	255.255.255.128	1/2
+/24	256	255.255.255.0	1
+/23	512	255.255.254.0	2
+/22	1024	255.255.252.0	4
+/21	2048	255.255.248.0	8
+/20	4096	255.255.240.0	16
+/19	8192	255.255.224.0	32
+/18	16384	255.255.192.0	64
+/17	32768	255.255.128.0	128
+/16	65536	255.255.0.0	256
+/15	131072	255.254.0.0	512
+/14	262144	255.252.0.0	1024
+/13	524288	255.248.0.0	2048
+/12	1048576	255.240.0.0	4096
+/11	2097152	255.224.0.0	8192
+/10	4194304	255.192.0.0	16384
+/9	8388608	255.128.0.0	32768
+/8	16777216	255.0.0.0	65536
+
+
+
+
+######################Ports
+
+
+Well-known ports 
+Port	TCP	UDP	IANA status[1]	Description	SCTP
+0	Reserved	Reserved	Official		
+N/A	N/A	Unofficial	In programming APIs (not in communication between hosts), requests a system-allocated (dynamic) port[5]	
+1	Yes	Assigned	Official	TCP Port Service Multiplexer (TCPMUX). Historic. Both TCP and UDP have been assigned to TCPMUX by IANA,[1] but by design only TCP is specified.[6]	
+5	Assigned	Assigned	Official	Remote Job Entry[7] was historically using socket 5 in its old socket form, while MIB PIM has identified it as TCP/5[8] and IANA has assigned both TCP and UDP 5 to it.	
+7	Yes	Yes	Official	Echo Protocol[9][10]	
+9	Yes	Yes	Official	Discard Protocol[11]	Yes [12]
+No	Yes	Unofficial	Wake-on-LAN[13]	
+11	Yes	Yes	Official	Active Users (systat service)[14][15]	
+13	Yes	Yes	Official	Daytime Protocol[16]	
+15	Yes	No	Unofficial	Previously netstat service[1][14]	
+17	Yes	Yes	Official	Quote of the Day (QOTD)[17]	
+18	Yes	Yes	Official	Message Send Protocol[18][19]	
+19	Yes	Yes	Official	Character Generator Protocol (CHARGEN)[20]	
+20	Yes	Assigned	Official	File Transfer Protocol (FTP) data transfer[10]	Yes [12]
+21	Yes	Assigned	Official	File Transfer Protocol (FTP) control (command)[10][12][21][22]	Yes[12]
+22	Yes	Assigned	Official	Secure Shell (SSH),[10] secure logins, file transfers (scp, sftp) and port forwarding	Yes [12]
+23	Yes	Assigned	Official	Telnet protocol—unencrypted text communications[10][23]	
+25	Yes	Assigned	Official	Simple Mail Transfer Protocol (SMTP),[10][24] used for email routing between mail servers	
+28	Yes		Unofficial	Palo Alto Networks' Panorama High Availability (HA) sync encrypted port.[25]	
+37	Yes	Yes	Official	Time Protocol[26]	
+42	Assigned	Yes	Official	Host Name Server Protocol[27]	
+43	Yes	Assigned	Official	WHOIS protocol[28][29][30]	
+47	Reserved	Reserved	Official		
+49	Yes	Yes	Official	TACACS Login Host protocol.[31] TACACS+, still in draft which is an improved but distinct version of TACACS, only uses TCP 49.[32]	
+51	Reserved	Reserved	Official	Historically used for Interface Message Processor logical address management,[33] entry has been removed by IANA on 2013-05-25	
+52	Assigned	Assigned	Official	Xerox Network Systems (XNS) Time Protocol. Despite this port being assigned by IANA, the service is meant to work on SPP (ancestor of IPX/SPX), instead of TCP/IP.[34]	
+53	Yes	Yes	Official	Domain Name System (DNS)[35][10]	
+54	Assigned	Assigned	Official	Xerox Network Systems (XNS) Clearinghouse (Name Server). Despite this port being assigned by IANA, the service is meant to work on SPP (ancestor of IPX/SPX), instead of TCP/IP.[34]	
+56	Assigned	Assigned	Official	Xerox Network Systems (XNS) Authentication Protocol. Despite this port being assigned by IANA, the service is meant to work on SPP (ancestor of IPX/SPX), instead of TCP/IP.[34]	
+58	Assigned	Assigned	Official	Xerox Network Systems (XNS) Mail. Despite this port being assigned by IANA, the service is meant to work on SPP (ancestor of IPX/SPX), instead of TCP/IP.[34]	
+61	Reserved	Reserved	Official	Historically assigned to the NIFTP-Based Mail protocol,[36] but was never documented in the related IEN.[37] The port number entry was removed from IANA's registry on 2017-05-18.[1]	
+67	Assigned	Yes	Official	Bootstrap Protocol (BOOTP) server;[10] also used by Dynamic Host Configuration Protocol (DHCP)	
+68	Assigned	Yes	Official	Bootstrap Protocol (BOOTP) client;[10] also used by Dynamic Host Configuration Protocol (DHCP)	
+69	Assigned	Yes	Official	Trivial File Transfer Protocol (TFTP)[10][38][39][40]	
+70	Yes	Assigned	Official	Gopher protocol[41]	
+71–74	Yes	Yes	Official	NETRJS protocol[42][43][44]	
+79	Yes	Assigned	Official	Finger protocol[10][45][46]	
+80	Yes	Yes	Official	Hypertext Transfer Protocol (HTTP)[47][48] uses TCP in versions 1.x and 2. HTTP/3 uses QUIC,[49] a transport protocol on top of UDP.	Yes [12]
+81	Yes		Unofficial	TorPark onion routing[verification needed]	
+82		Yes	Unofficial	TorPark control[verification needed]	
+83	Yes	Assigned	Official	MIT ML Device, networking file system [50]	
+88	Yes	Assigned	Official	Kerberos[10][51][52] authentication system	
+90	Yes	Yes	Unofficial	PointCast (dotcom)[1][third-party source needed]	
+95	Yes	Assigned	Official	SUPDUP, terminal-independent remote login [53]	
+101	Yes	Assigned	Official	NIC host name[54]	
+102	Yes	Assigned	Official	ISO Transport Service Access Point (TSAP) Class 0 protocol;[55][56]	
+104	Yes	Yes	Official	Digital Imaging and Communications in Medicine (DICOM; also port 11112)	
+105	Yes	Yes	Official	CCSO Nameserver[57]	
+107	Yes	Yes	Official	Remote User Telnet Service (RTelnet)[58]	
+108	Yes	Yes	Official	IBM Systems Network Architecture (SNA) gateway access server	
+109	Yes	Assigned	Official	Post Office Protocol, version 2 (POP2)[59]	
+110	Yes	Assigned	Official	Post Office Protocol, version 3 (POP3)[10][60][61]	
+111	Yes	Yes	Official	Open Network Computing Remote Procedure Call (ONC RPC, sometimes referred to as Sun RPC)	
+113	Yes	No	Official	Ident, authentication service/identification protocol,[10][62] used by IRC servers to identify users	
+Yes	Assigned	Official	Authentication Service (auth), the predecessor to identification protocol. Used to determine a user's identity of a particular TCP connection.[63]	
+115	Yes	Assigned	Official	Simple File Transfer Protocol[10][64]	
+117	Yes	Yes	Official	UUCP Mapping Project (path service)[citation needed]	
+118	Yes	Yes	Official	Structured Query Language (SQL) Services[jargon]	
+119	Yes	Assigned	Official	Network News Transfer Protocol (NNTP),[10] retrieval of newsgroup messages[65][66]	
+123	Assigned	Yes	Official	Network Time Protocol (NTP), used for time synchronization[10]	
+126	Yes	Yes	Official	Formerly Unisys Unitary Login, renamed by Unisys to NXEdit. Used by Unisys Programmer's Workbench for Clearpath MCP, an IDE for Unisys MCP software development	
+135	Yes	Yes	Official	DCE endpoint resolution	
+Yes	Yes	Official	Microsoft EPMAP (End Point Mapper), also known as DCE/RPC Locator service,[67] used to remotely manage services including DHCP server, DNS server and WINS. Also used by DCOM	
+137	Yes	Yes	Official	NetBIOS Name Service, used for name registration and resolution[68][69]	
+138	Assigned	Yes	Official	NetBIOS Datagram Service[10][68][69]	
+139	Yes	Assigned	Official	NetBIOS Session Service[68][69]	
+143	Yes	Assigned	Official	Internet Message Access Protocol (IMAP),[10] management of electronic mail messages on a server[70]	
+152	Yes	Yes	Official	Background File Transfer Program (BFTP)[71][importance?]	
+153	Yes	Yes	Official	Simple Gateway Monitoring Protocol (SGMP), a protocol for remote inspection and alteration of gateway management information[72]	
+156	Yes	Yes	Official	Structured Query Language (SQL) Service[jargon]	
+158	Yes	Yes	Official	Distributed Mail System Protocol (DMSP, sometimes referred to as Pcmail)[73][importance?]	
+161	Assigned	Yes	Official	Simple Network Management Protocol (SNMP)[74][citation needed][10]	
+162	Yes	Yes	Official	Simple Network Management Protocol Trap (SNMPTRAP)[74][75][citation needed]	
+170	Yes	Yes	Official	Network PostScript print server	
+177	Yes	Yes	Official	X Display Manager Control Protocol (XDMCP), used for remote logins to an X Display Manager server[76][self-published source]	
+179	Yes	Assigned	Official	Border Gateway Protocol (BGP),[77] used to exchange routing and reachability information among autonomous systems (AS) on the Internet	Yes [12]
+194	Yes	Yes	Official	Internet Relay Chat (IRC)[78]	
+199	Yes	Yes	Official	SNMP Unix Multiplexer (SMUX)[79]	
+201	Yes	Yes	Official	AppleTalk Routing Maintenance	
+209	Yes	Assigned	Official	Quick Mail Transfer Protocol[80][self-published source]	
+210	Yes	Yes	Official	ANSI Z39.50	
+213	Yes	Yes	Official	Internetwork Packet Exchange (IPX)	
+218	Yes	Yes	Official	Message posting protocol (MPP)	
+220	Yes	Yes	Official	Internet Message Access Protocol (IMAP), version 3	
+225–241	Reserved	Reserved	Official		
+249–255	Reserved	Reserved	Official		
+259	Yes	Yes	Official	Efficient Short Remote Operations (ESRO)	
+262	Yes	Yes	Official	Arcisdms	
+264	Yes	Yes	Official	Border Gateway Multicast Protocol (BGMP)	
+280	Yes	Yes	Official	http-mgmt	
+300	Yes		Unofficial	ThinLinc Web Access	
+308	Yes		Official	Novastor Online Backup	
+311	Yes	Assigned	Official	Mac OS X Server Admin[10] (officially AppleShare IP Web administration[1])	
+318	Yes	Yes	Official	PKIX Time Stamp Protocol (TSP)	
+319		Yes	Official	Precision Time Protocol (PTP) event messages	
+320		Yes	Official	Precision Time Protocol (PTP) general messages	
+350	Yes	Yes	Official	Mapping of Airline Traffic over Internet Protocol (MATIP) type A	
+351	Yes	Yes	Official	MATIP type B	
+356	Yes	Yes	Official	cloanto-net-1 (used by Cloanto Amiga Explorer and VMs)	
+366	Yes	Yes	Official	On-Demand Mail Relay (ODMR)	
+369	Yes	Yes	Official	Rpc2portmap	
+370	Yes	Yes	Official	codaauth2, Coda authentication server	
+Yes	Official	securecast1, outgoing packets to NAI's SecureCast servers[81]As of 2000	
+371	Yes	Yes	Official	ClearCase albd	
+376	Yes	Yes	Official	Amiga Envoy Network Inquiry Protocol	
+383	Yes	Yes	Official	HP data alarm manager	
+384	Yes	Yes	Official	A Remote Network Server System	
+387	Yes	Yes	Official	AURP (AppleTalk Update-based Routing Protocol)[82]	
+388	Yes	Assigned	Official	Unidata LDM near real-time data distribution protocol[83][self-published source][84][self-published source]	
+389	Yes	Assigned	Official	Lightweight Directory Access Protocol (LDAP)[10]	
+399	Yes	Yes	Official	Digital Equipment Corporation DECnet+ (Phase V) over TCP/IP (RFC1859)	
+401	Yes	Yes	Official	Uninterruptible power supply (UPS)	
+427	Yes	Yes	Official	Service Location Protocol (SLP)[10]	
+433	Yes	Yes	Official	NNSP, part of Network News Transfer Protocol	
+434	Yes	Yes	Official	Mobile IP Agent (RFC 5944)	
+443	Yes	Yes	Official	Hypertext Transfer Protocol (HTTP)[47][48] uses TCP in versions 1.x and 2. HTTP/3 uses QUIC,[49] a transport protocol on top of UDP.	Yes [12]
+444	Yes	Yes	Official	Simple Network Paging Protocol (SNPP), RFC 1568	
+445	Yes	Yes	Official	Microsoft-DS (Directory Services) Active Directory,[85] Windows shares	
+Yes	Assigned	Official	Microsoft-DS (Directory Services) SMB[10] file sharing	
+464	Yes	Yes	Official	Kerberos Change/Set password	
+465	Yes	No	Official	URL Rendezvous Directory for SSM (Cisco protocol)[importance?]	
+Yes	No	Official	Authenticated SMTP[10] over TLS/SSL (SMTPS)[86]	
+475	Yes	Yes	Official	tcpnethaspsrv, Aladdin Knowledge Systems Hasp services	
+491	Yes		Unofficial	GO-Global remote access and application publishing software	
+497	Yes	Yes	Official	Retrospect	
+500	Assigned	Yes	Official	Internet Security Association and Key Management Protocol (ISAKMP) / Internet Key Exchange (IKE)[10]	
+502	Yes	Yes	Official	Modbus Protocol	
+504	Yes	Yes	Official	Citadel, multiservice protocol for dedicated clients for the Citadel groupware system	
+510	Yes	Yes	Official	FirstClass Protocol (FCP), used by FirstClass client/server groupware system	
+512	Yes		Official	Rexec, Remote Process Execution	
+Yes	Official	comsat, together with biff	
+513	Yes		Official	rlogin	
+Yes	Official	Who[87]	
+514	Yes		Unofficial	Remote Shell, used to execute non-interactive commands on a remote system (Remote Shell, rsh, remsh)	
+No	Yes	Official	Syslog,[10] used for system logging	
+515	Yes	Assigned	Official	Line Printer Daemon (LPD),[10] print service	
+517		Yes	Official	Talk	
+518		Yes	Official	NTalk	
+520	Yes		Official	efs, extended file name server	
+Yes	Official	Routing Information Protocol (RIP)	
+521		Yes	Official	Routing Information Protocol Next Generation (RIPng)	
+524	Yes	Yes	Official	NetWare Core Protocol (NCP) is used for a variety things such as access to primary NetWare server resources, Time Synchronization, etc.	
+525		Yes	Official	Timed, Timeserver	
+530	Yes	Yes	Official	Remote procedure call (RPC)	
+532	Yes	Assigned	Official	netnews[10]	
+533		Yes	Official	netwall, For Emergency Broadcasts	
+540	Yes		Official	Unix-to-Unix Copy Protocol (UUCP)	
+542	Yes	Yes	Official	commerce (Commerce Applications)	
+543	Yes		Official	klogin, Kerberos login	
+544	Yes		Official	kshell, Kerberos Remote shell	
+546	Yes	Yes	Official	DHCPv6 client	
+547	Yes	Yes	Official	DHCPv6 server	
+548	Yes	Assigned	Official	Apple Filing Protocol (AFP) over TCP[10]	
+550	Yes	Yes	Official	new-rwho, new-who[87]	
+554	Yes	Yes	Official	Real Time Streaming Protocol (RTSP)[10]	
+556	Yes		Official	Remotefs, RFS, rfs_server	
+560		Yes	Official	rmonitor, Remote Monitor	
+561		Yes	Official	monitor	
+563	Yes	Yes	Official	NNTP over TLS/SSL (NNTPS)	
+564	Yes		Unofficial	9P (Plan 9)	
+585	Port 993	?	Unofficial	Legacy use of Internet Message Access Protocol over TLS/SSL (IMAPS), now in use at port 993.[88]	
+587	Yes	Assigned	Official	email message submission[10][89] (SMTP)	
+591	Yes		Official	FileMaker 6.0 (and later) Web Sharing (HTTP Alternate, also see port 80)	
+593	Yes	Yes	Official	HTTP RPC Ep Map, Remote procedure call over Hypertext Transfer Protocol, often used by Distributed Component Object Model services and Microsoft Exchange Server	
+601	Yes		Official	Reliable Syslog Service — used for system logging	
+604	Yes		Official	TUNNEL profile,[90] a protocol for BEEP peers to form an application layer tunnel	
+623		Yes	Official	ASF Remote Management and Control Protocol (ASF-RMCP) & IPMI Remote Management Protocol	
+625	Yes	No	Unofficial	Open Directory Proxy (ODProxy)[10]	
+631	Yes	Yes	Official	Internet Printing Protocol (IPP)[10]	
+Yes	Yes	Unofficial	Common Unix Printing System (CUPS) administration console (extension to IPP)	
+635	Yes	Yes	Official	RLZ DBase	
+636	Yes	Assigned	Official	Lightweight Directory Access Protocol over TLS/SSL (LDAPS)[10]	
+639	Yes	Yes	Official	MSDP, Multicast Source Discovery Protocol	
+641	Yes	Yes	Official	SupportSoft Nexus Remote Command (control/listening), a proxy gateway connecting remote control traffic	
+643	Yes	Yes	Official	SANity	
+646	Yes	Yes	Official	Label Distribution Protocol (LDP), a routing protocol used in MPLS networks	
+647	Yes		Official	DHCP Failover protocol[91]	
+648	Yes		Official	Registry Registrar Protocol (RRP)[92]	
+651	Yes	Yes	Official	IEEE-MMS	
+653	Yes	Yes	Official	SupportSoft Nexus Remote Command (data), a proxy gateway connecting remote control traffic	
+654	Yes		Official	Media Management System (MMS) Media Management Protocol (MMP)[93]	
+655	Yes	Yes	Official	Tinc VPN daemon	
+657	Yes	Yes	Official	IBM RMC (Remote monitoring and Control) protocol, used by System p5 AIX Integrated Virtualization Manager (IVM)[94] and Hardware Management Console to connect managed logical partitions (LPAR) to enable dynamic partition reconfiguration	
+660	Yes	Assigned	Official	Mac OS X Server administration,[1] version 10.4 and earlier[10]	
+666	Yes	Yes	Official	Doom, first online first-person shooter	
+Yes		Unofficial	airserv-ng, aircrack-ng's server for remote-controlling wireless devices	
+674	Yes		Official	Application Configuration Access Protocol (ACAP)	
+688	Yes	Yes	Official	REALM-RUSD (ApplianceWare Server Appliance Management Protocol)	
+690	Yes	Yes	Official	Velneo Application Transfer Protocol (VATP)	
+691	Yes		Official	MS Exchange Routing	
+694	Yes	Yes	Official	Linux-HA high-availability heartbeat	
+695	Yes		Official	IEEE Media Management System over SSL (IEEE-MMS-SSL)[95]	
+698		Yes	Official	Optimized Link State Routing (OLSR)	
+700	Yes		Official	Extensible Provisioning Protocol (EPP), a protocol for communication between domain name registries and registrars (RFC 5734)	
+701	Yes		Official	Link Management Protocol (LMP),[96] a protocol that runs between a pair of nodes and is used to manage traffic engineering (TE) links	
+702	Yes		Official	IRIS[97][98] (Internet Registry Information Service) over BEEP (Blocks Extensible Exchange Protocol)[99] (RFC 3983)	
+706	Yes		Official	Secure Internet Live Conferencing (SILC)	
+711	Yes		Official	Cisco Tag Distribution Protocol[100][101][102]—being replaced by the MPLS Label Distribution Protocol[103]	
+712	Yes		Official	Topology Broadcast based on Reverse-Path Forwarding routing protocol (TBRPF; RFC 3684)	
+749	Yes	Yes	Official	Kerberos (protocol) administration[10]	
+750		Yes	Official	kerberos-iv, Kerberos version IV	
+751	Yes	Yes	Unofficial	kerberos_master, Kerberos authentication	
+752		Yes	Unofficial	passwd_server, Kerberos password (kpasswd) server	
+753	Yes	Yes	Official	Reverse Routing Header (RRH)[104]	
+Yes	Unofficial	userreg_server, Kerberos userreg server	
+754	Yes	Yes	Official	tell send	
+Yes		Unofficial	krb5_prop, Kerberos v5 slave propagation	
+760	Yes	Yes	Unofficial	krbupdate [kreg], Kerberos registration	
+782	Yes		Unofficial	Conserver serial-console management server	
+783	Yes		Unofficial	SpamAssassin spamd daemon	
+800	Yes	Yes	Official	mdbs-daemon	
+802	Yes	Yes	Official	MODBUS/TCP Security[105]	
+808	Yes		Unofficial	Microsoft Net.TCP Port Sharing Service	
+829	Yes	Assigned	Official	Certificate Management Protocol[106]	
+830	Yes	Yes	Official	NETCONF over SSH	
+831	Yes	Yes	Official	NETCONF over BEEP	
+832	Yes	Yes	Official	NETCONF for SOAP over HTTPS	
+833	Yes	Yes	Official	NETCONF for SOAP over BEEP	
+843	Yes		Unofficial	Adobe Flash[107]	
+847	Yes		Official	DHCP Failover protocol	
+848	Yes	Yes	Official	Group Domain Of Interpretation (GDOI) protocol	
+853	Yes	Yes	Official	DNS over TLS (RFC 7858)	
+860	Yes		Official	iSCSI (RFC 3720)	
+861	Yes	Yes	Official	OWAMP control (RFC 4656)	
+862	Yes	Yes	Official	TWAMP control (RFC 5357)	
+873	Yes		Official	rsync file synchronization protocol	
+888	Yes		Unofficial	cddbp, CD DataBase (CDDB) protocol (CDDBP)	
+Yes		Unofficial	IBM Endpoint Manager Remote Control	
+897	Yes	Yes	Unofficial	Brocade SMI-S RPC	
+898	Yes	Yes	Unofficial	Brocade SMI-S RPC SSL	
+902	Yes	Yes	Unofficial	VMware ESXi[108][109]	
+903	Yes		Unofficial	VMware ESXi[108][109]	
+953	Yes	Reserved	Official	BIND remote name daemon control (RNDC)[110][111]	
+981	Yes		Unofficial	Remote HTTPS management for firewall devices running embedded Check Point VPN-1 software[112]	
+987	Yes		Unofficial	Microsoft Remote Web Workplace, a feature of Windows Small Business Server[113]	
+989	Yes	Yes	Official	FTPS Protocol (data), FTP over TLS/SSL	
+990	Yes	Yes	Official	FTPS Protocol (control), FTP over TLS/SSL	
+991	Yes	Yes	Official	Netnews Administration System (NAS)[114]	
+992	Yes	Yes	Official	Telnet protocol over TLS/SSL	
+993	Yes	Assigned	Official	Internet Message Access Protocol over TLS/SSL (IMAPS)[10]	
+994	Reserved	Reserved	Official		
+Maybe	Maybe	Unofficial	Internet Relay Chat over TLS/SSL (IRCS). Previously assigned, but not used in common practice.	
+995	Yes	Yes	Official	Post Office Protocol 3 over TLS/SSL (POP3S)[10]	
+1010	Yes		Unofficial	ThinLinc web-based administration interface[115][self-published source?]	
+1011–1020	Reserved	Reserved	Official		
+1023	Reserved	Reserved	Official	[1]	
+Yes	Yes	Unofficial	z/OS Network File System (NFS) (potentially ports 991–1023)
+[78]
+
+[79]
+
+[116][self-published source]
+
+######Inhaber
+Matthias Holzer
+
+
