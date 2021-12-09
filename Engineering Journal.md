@@ -11,8 +11,7 @@
    	```
 	configuration terminal
 	```
-
-> Safe the running-config into startup-config
+### Safe the running-config into startup-config
 ```
 !in enable
 write	
@@ -23,12 +22,18 @@ or
 copy running-config startup-config
 ```
 
-> Increases history size
+### stop dns lookup
+```
+!in config t
+no ip domain lookup
+```
+
+### Increases history size
 ```
 terminal history size <SIZE>
 ```
 
-> Set console password
+### Set console password
 ```
 line console 0
   exec-timeout 0
@@ -38,13 +43,13 @@ line console 0
 enable secret <PASSWORD>
 ```
 
-> Telnet
+### Telnet
 ```
 line vty 0 4
 password <PASSWORD>
 ```
 
-> SSH
+### SSH
 ```
 ip domain-name <DOMAIN>
 hostname <HOSTNAME>
@@ -57,21 +62,22 @@ line vty 0 15
 ip ssh [version / time-out / authentication-retries]
 ```
 
-> Static route
-```
-ip route <NETWORK> <SUBNET> <IP / INTERFACE>
-```
-
-> Deafult route
-```
-ip route 0.0.0.0 0.0.0.0 <IP / INTERFACE>
-```
-
-> Erase settings
+### Erase settings
 ```
 erase startup
 delete vlan.dat
 reload
+```
+
+## Routing
+### Static route
+```
+ip route <NETWORK> <SUBNET> <IP / INTERFACE>
+```
+
+### Deafult route
+```
+ip route 0.0.0.0 0.0.0.0 <IP / INTERFACE>
 ```
 
 ### Multilayer Switch
@@ -118,9 +124,9 @@ show interface vlan <VLAN>
 
 ### Port Security
 #### Switch  
-> * Protect: Blocks Traffic
-> * Restrict: Blocks Traffic & Logs Violations
-> * Shutdown: disables the port
+ * Protect: Blocks Traffic
+ * Restrict: Blocks Traffic & Logs Violations
+ * Shutdown: disables the port
 
 ```
 interface <INTERFACE>
@@ -361,6 +367,62 @@ interface <interface>
 
 
 
+
+
+
+
+### IPS
+```
+license boot module c1900 technology-package securityk9
+logging 10.Kn.10.100
+do mkdir DIR_IPS
+ip ips config location flash:DIR_IPS
+ip ips name RULE_IPS
+ip ips notify log
+```
+
+Enable IPS on interfaces
+```
+int g0/1
+ip ips RULE_IPS out
+exit
+```
+
+Retire old signautres
+```
+ip ips signature-category
+category all
+retired true
+exit
+```
+Unritire ios ips basic
+```
+category ios_ips basic
+retired false
+exit
+exit
+```
+unritire and enable icmp request signatures; drop packet and alert
+```
+ip ips signature-definition
+signature 2004 0
+status
+retired false
+enable true
+exit
+engine
+event-action produce-alert
+event-action deny-packet-inline
+exit
+exit
+exit
+```
+show commands
+```
+show ip ips signatures sigid 2004 subid 0
+show ip ips signatures count
+show ip ips all
+```
 
 ## Cheatsheet
 ### Subnets
