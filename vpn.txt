@@ -1,0 +1,62 @@
+!install VPN
+license boot module c2900 technology-package securityk9
+yes
+do write
+do reload
+
+!!!!!!VPN Router 1
+access-list <ACL Number> permit ip <source IP /ip of THIS LAN > <destination IP / ip of OTHER LAN>
+
+
+crypto isakmp policy <policy Number /KN>
+ encr aes 256
+ authentication pre-share
+ group 5
+exit
+!
+crypto isakmp key <NAME> address <IP of other VPN Router>
+!
+!
+!
+crypto ipsec transform-set VPN-SET-<NAME> esp-aes esp-sha-hmac
+!
+crypto map VPN-MAP-<NAME> 10 ipsec-isakmp 
+ description VPN conection to R4
+ set peer <IP of other VPN Router>
+ set transform-set VPN-SET-<NAME>
+ match address <ACL Number>
+exit
+
+
+int g0/0
+    crypto map VPN-MAP-<NAME>
+
+
+
+
+!!!!!!VPN Router 4
+access-list <ACL Number> permit ip <source IP /ip of THIS LAN > <destination IP / ip of OTHER LAN>
+
+
+crypto isakmp policy <policy Number /KN>
+ encr aes 256
+ authentication pre-share
+ group 5
+exit
+!
+crypto isakmp key <NAME> address <IP of other VPN Router>
+!
+!
+!
+crypto ipsec transform-set VPN-SET-<NAME> esp-aes esp-sha-hmac
+!
+crypto map VPN-MAP-<NAME> 10 ipsec-isakmp 
+ description VPN conection to R4
+ set peer <IP of other VPN Router>
+ set transform-set VPN-SET-<NAME>
+ match address <ACL Number>
+exit
+
+
+int g0/0
+    crypto map VPN-MAP-<NAME>
